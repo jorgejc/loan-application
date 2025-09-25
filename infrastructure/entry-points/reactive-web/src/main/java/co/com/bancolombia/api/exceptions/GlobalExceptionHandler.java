@@ -8,6 +8,9 @@ import org.springframework.core.codec.DecodingException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
@@ -20,6 +23,28 @@ import java.util.List;
 @Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public Mono<ResponseEntity<ProblemDetail>> handleAccessDenied(AccessDeniedException ex) {
+        log.warn("Access denied: {}", ex.getMessage());
+
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problemDetail.setTitle("Forbidden");
+        problemDetail.setDetail("You do not have permission to perform this action");
+
+        return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).body(problemDetail));
+    }
+
+    @ExceptionHandler({InvalidBearerTokenException.class, AuthenticationException.class})
+    public Mono<ResponseEntity<ProblemDetail>> handleAuthenticationErrors(Exception ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+        problemDetail.setTitle("Unauthorized");
+        problemDetail.setDetail("Invalid or expired token");
+
+        return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problemDetail));
+    }
 
     @ExceptionHandler(ExternalServiceCommunicationException.class)
     public Mono<ResponseEntity<ProblemDetail>> handleExternalServiceError(ExternalServiceCommunicationException ex) {
